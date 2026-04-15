@@ -111,7 +111,7 @@ function ResetPasswordForm() {
             onChange={(e) => setNewPassword(e.target.value)}
             required
             minLength={8}
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-black"
             placeholder="Enter new password"
           />
         </div>
@@ -126,7 +126,7 @@ function ResetPasswordForm() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-black"
             placeholder="Confirm password"
           />
         </div>

@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
             value={formData.email}
             onChange={handleChange}
             required
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-black"
             placeholder="you@example.com"
           />
         </div>

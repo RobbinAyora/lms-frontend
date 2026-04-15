@@ -12,7 +12,7 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterData>({
     email: "",
     password: "",
-    role: "STUDENT", // ✅ FIXED
+    role: "Student" as const,
   });
 
   const [error, setError] = useState("");
@@ -110,7 +110,7 @@ export default function RegisterPage() {
           </label>
 
           <div className="flex gap-4">
-            {(["STUDENT", "INSTRUCTOR", "ADMIN"] as const).map((role) => (
+            {(["Student", "Instructor", "Admin"] as const).map((role) => (
               <label
                 key={role}
                 className="flex items-center gap-2 cursor-pointer"
@@ -125,7 +125,7 @@ export default function RegisterPage() {
                 />
 
                 <span className="text-sm text-slate-600">
-                  {role.replace("_", " ").toLowerCase()}
+                  {role.toLowerCase()}
                 </span>
               </label>
             ))}

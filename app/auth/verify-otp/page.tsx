@@ -70,7 +70,7 @@ function VerifyOTPForm() {
             onChange={handleChange}
             maxLength={6}
             required
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-center text-2xl tracking-widest"
+            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-center text-2xl tracking-widest text-black"
             placeholder="000000"
             inputMode="numeric"
           />
