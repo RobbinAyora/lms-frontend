@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 
 interface User {
   id: string;
@@ -27,28 +26,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const storedToken = Cookies.get("token");
-    const storedUser = Cookies.get("user");
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const initAuth = () => {
+      if (typeof window === "undefined") {
+        setIsLoading(false);
+        return;
+      }
+
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          if (storedUser && storedUser.includes("@")) {
+            setUser({ id: "", email: storedUser, role: "Student" as const });
+          }
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initAuth();
   }, []);
 
   const login = (newToken: string, newUser: User) => {
-    Cookies.set("token", newToken, { expires: 7 });
-    Cookies.set("user", JSON.stringify(newUser), { expires: 7 });
+    if (typeof window !== "undefined") {
+      localStorage.setItem("token", newToken);
+      localStorage.setItem("user", JSON.stringify(newUser));
+    }
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = () => {
-    Cookies.remove("token");
-    Cookies.remove("user");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("user");
+    }
     setToken(undefined);
     setUser(null);
-    router.push("/login");
+    router.push("/auth/login");
   };
 
   return (

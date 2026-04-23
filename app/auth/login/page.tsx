@@ -30,22 +30,35 @@ export default function LoginPage() {
       const response = await authApi.login(formData);
 
       // ✅ MATCHING YOUR BACKEND RESPONSE
-      const { access_token, role, dashboardUrl } = response.data;
+      const { access_token, role, dashboardUrl, user } = response.data;
 
       // Save auth data
       localStorage.setItem("token", access_token);
       localStorage.setItem("role", role);
-
-      // Optional: store full response if needed
-      localStorage.setItem("auth", JSON.stringify(response.data));
-
-      // Redirect logic based on role
-      if (role === "ADMIN") {
-        router.push("/admin");
-      } else if (role === "INSTRUCTOR") {
-        router.push("/instructor");
+      
+      // Store user info if available, otherwise use login email
+      if (user) {
+        localStorage.setItem("user", JSON.stringify(user));
       } else {
-        router.push("/student");
+        localStorage.setItem("user", JSON.stringify({ 
+          id: "", 
+          email: formData.email, 
+          role: role === "ADMIN" ? "Admin" : role === "INSTRUCTOR" ? "Instructor" : "Student" 
+        }));
+      }
+
+      // Also set cookies for consistency
+      document.cookie = `token=${access_token}; path=/; max-age=${7 * 24 * 60 * 60}`;
+      const userData = user || { id: "", email: formData.email, role: role === "ADMIN" ? "Admin" : role === "INSTRUCTOR" ? "Instructor" : "Student" };
+      document.cookie = `user=${JSON.stringify(userData)}; path=/; max-age=${7 * 24 * 60 * 60}`;
+
+      // Redirect logic based on role - use window.location for full page reload
+      if (role === "ADMIN") {
+        window.location.href = "/admin";
+      } else if (role === "INSTRUCTOR") {
+        window.location.href = "/instructor";
+      } else {
+        window.location.href = "/student";
       }
 
       // OPTIONAL (alternative: use backend redirect)

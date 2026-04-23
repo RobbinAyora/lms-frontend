@@ -15,7 +15,6 @@ interface DashboardLayoutProps {
   navItems: NavItem[];
   title?: string;
   onSearch?: (query: string) => void;
-  notificationCount?: number;
 }
 
 export function DashboardLayout({
@@ -23,7 +22,6 @@ export function DashboardLayout({
   navItems,
   title,
   onSearch,
-  notificationCount = 0,
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -38,7 +36,6 @@ export function DashboardLayout({
         <Navbar
           onMenuClick={() => setSidebarOpen(true)}
           onSearch={onSearch}
-          notificationCount={notificationCount}
         />
         <main className="p-4 lg:p-6">
           {title && (
