@@ -109,14 +109,9 @@ export default function AdminSupportPage() {
     try {
       const data = await supportApi.getMessages(ticketId);
       console.log('Admin loaded messages:', data);
-      if (data.length === 0 && selectedTicket?.message) {
-        const initialMessage: SupportMessage = {
-          id: 'initial-' + ticketId,
-          message: selectedTicket.message,
-          senderRole: 'student',
-          senderId: selectedTicket.userId || '',
-          createdAt: selectedTicket.createdAt,
-        };
+      // Admin views messages directly from API
+      if (data && data.length > 0) {
+        // (Note: API will return initial message if stored in ticket)
         setMessages([initialMessage]);
       } else {
         setMessages(data);

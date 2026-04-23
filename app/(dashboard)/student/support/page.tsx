@@ -122,18 +122,7 @@ export default function StudentSupportPage() {
       const data = await supportApi.getMessages(ticketId);
       console.log('Loaded messages for ticket:', ticketId, data);
       // If no messages from API but ticket has initial message, use that
-      if (data.length === 0 && selectedTicket?.message) {
-        const initialMessage: SupportMessage = {
-          id: 'initial-' + ticketId,
-          message: selectedTicket.message,
-          senderRole: 'student',
-          senderId: selectedTicket.userId,
-          createdAt: selectedTicket.createdAt,
-        };
-        setMessages([initialMessage]);
-      } else {
-        setMessages(data);
-      }
+    setMessages(data);
     } catch (error) {
       console.error('Failed to load messages:', error);
     } finally {
