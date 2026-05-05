@@ -55,15 +55,43 @@ export interface LessonResponse {
   data: Module[];
 }
 
+export interface ProgressResponse {
+  data: {
+    percentage: number;
+    completedLessons: number;
+    totalLessons: number;
+  };
+}
+
 export const courseApi = {
+  createCourse: async (courseData: {
+    title: string;
+    description: string;
+    thumbnail?: string;
+    price: number;
+  }): Promise<Course> => {
+    const response = await api.post<CourseResponse>("/api/courses", courseData);
+    const data = response.data;
+    if (Array.isArray(data)) {
+      return data[0];
+    }
+    return data;
+  },
+
   getAllCourses: async (): Promise<Course[]> => {
     const response = await api.get<CourseResponse>("/api/courses", { skipAuth: true });
     const data = response.data;
     return Array.isArray(data) ? data : data ? [data] : [];
   },
 
+  getInstructorCourses: async (): Promise<Course[]> => {
+    const response = await api.get<CourseResponse>("/api/courses");
+    const data = response.data;
+    return Array.isArray(data) ? data : data ? [data] : [];
+  },
+
   getEnrolledCourses: async (): Promise<Course[]> => {
-    const response = await api.get<CourseResponse>("/api/courses/enrolled");
+    const response = await api.get<CourseResponse>("/api/student/courses");
     const data = response.data;
     return Array.isArray(data) ? data : data ? [data] : [];
   },
@@ -106,11 +134,21 @@ export const courseApi = {
   },
 
   getCourseLessons: async (courseId: string): Promise<Module[]> => {
-    const response = await api.get<LessonResponse>(`/api/courses/${courseId}/lessons`);
+    const response = await api.get<LessonResponse>(`/api/student/courses/${courseId}/lessons`);
     return response.data ?? [];
   },
 
   markLessonComplete: async (courseId: string, lessonId: string): Promise<void> => {
-    await api.patch(`/api/courses/${courseId}/lessons/${lessonId}/complete`);
+    await api.post(`/api/progress/complete`, { courseId, lessonId });
+  },
+
+  saveWatchTime: async (lessonId: string, seconds: number): Promise<void> => {
+    await api.post(`/api/progress/time`, { lessonId, seconds });
+  },
+
+  getCourseProgress: async (courseId: string): Promise<ProgressResponse["data"]> => {
+    const response = await api.get<ProgressResponse>(`/api/progress/course/${courseId}`);
+    return response.data;
   },
 };
+

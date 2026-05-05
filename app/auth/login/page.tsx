@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { authApi, LoginData } from "@/lib/api";
+import { api } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const [formData, setFormData] = useState<LoginData>({
+  const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
@@ -18,7 +18,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,57 +30,78 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await authApi.login(formData);
+      // ✅ FIX: api.post returns data directly
+      const data = await api.post<any>(
+        "/api/auth/login",
+        formData
+      );
 
-      // ✅ MATCHING YOUR BACKEND RESPONSE
-      const { access_token, role, dashboardUrl, user } = response.data;
+      console.log("LOGIN RESPONSE:", data);
 
-      // Save auth data
-      localStorage.setItem("token", access_token);
-      localStorage.setItem("role", role);
-      
-      // Store user info if available, otherwise use login email
-      if (user) {
-        localStorage.setItem("user", JSON.stringify(user));
-      } else {
-        localStorage.setItem("user", JSON.stringify({ 
-          id: "", 
-          email: formData.email, 
-          role: role === "ADMIN" ? "Admin" : role === "INSTRUCTOR" ? "Instructor" : "Student" 
-        }));
+      const access_token =
+        data?.access_token || data?.token || data?.data?.access_token;
+
+      const role =
+        data?.role || data?.data?.role;
+
+      const user =
+        data?.user || data?.data?.user;
+
+      if (!access_token) {
+        throw new Error(
+          data?.message || "Invalid login response from server"
+        );
       }
 
-      // Also set cookies for consistency
-      document.cookie = `token=${access_token}; path=/; max-age=${7 * 24 * 60 * 60}`;
-      const userData = user || { id: "", email: formData.email, role: role === "ADMIN" ? "Admin" : role === "INSTRUCTOR" ? "Instructor" : "Student" };
-      document.cookie = `user=${JSON.stringify(userData)}; path=/; max-age=${7 * 24 * 60 * 60}`;
+      // Save auth
+      localStorage.setItem("token", access_token);
+      localStorage.setItem("role", role || "");
 
-      // Redirect logic based on role - use window.location for full page reload
-      if (role === "ADMIN") {
+      const userData = user || {
+        id: "",
+        email: formData.email,
+        role:
+          role === "ADMIN"
+            ? "Admin"
+            : role === "INSTRUCTOR"
+            ? "Instructor"
+            : "Student",
+      };
+
+      localStorage.setItem("user", JSON.stringify(userData));
+
+      // cookies
+      document.cookie = `token=${access_token}; path=/; max-age=${
+        7 * 24 * 60 * 60
+      }`;
+
+      document.cookie = `user=${JSON.stringify(
+        userData
+      )}; path=/; max-age=${7 * 24 * 60 * 60}`;
+
+      // Redirect
+      const normalizedRole = role?.toUpperCase();
+
+      if (normalizedRole === "ADMIN") {
         window.location.href = "/admin";
-      } else if (role === "INSTRUCTOR") {
+      } else if (normalizedRole === "INSTRUCTOR") {
         window.location.href = "/instructor";
       } else {
         window.location.href = "/student";
       }
-
-      // OPTIONAL (alternative: use backend redirect)
-      // window.location.href = dashboardUrl;
-
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.log("Login error:", err);
 
-      const error = err as {
-        response?: { data?: { message?: string } };
-      };
-
       const message =
-        error.response?.data?.message || "Login failed";
+        err?.message ||
+        err?.response?.data?.message ||
+        "Login failed";
 
-      // If OTP verification required
       if (message.toLowerCase().includes("verify")) {
         router.push(
-          `/auth/verify-otp?email=${encodeURIComponent(formData.email)}`
+          `/auth/verify-otp?email=${encodeURIComponent(
+            formData.email
+          )}`
         );
       } else {
         setError(message);
@@ -93,13 +117,14 @@ export default function LoginPage() {
       subtitle="Sign in to your account"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
+
         {error && (
           <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
             {error}
           </div>
         )}
 
-        {/* Email */}
+        {/* EMAIL */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Email
@@ -110,12 +135,12 @@ export default function LoginPage() {
             value={formData.email}
             onChange={handleChange}
             required
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-black"
+            className="w-full px-4 py-3 border border-slate-200 rounded-lg text-black"
             placeholder="you@example.com"
           />
         </div>
 
-        {/* Password */}
+        {/* PASSWORD */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             Password
@@ -126,12 +151,12 @@ export default function LoginPage() {
             value={formData.password}
             onChange={handleChange}
             required
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-black"
+            className="w-full px-4 py-3 border border-slate-200 rounded-lg text-black"
             placeholder="Enter your password"
           />
         </div>
 
-        {/* Forgot password */}
+        {/* FORGOT PASSWORD */}
         <div className="text-right">
           <Link
             href="/auth/forgot-password"
@@ -141,16 +166,16 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {/* Submit button */}
+        {/* SUBMIT */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition disabled:opacity-50"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg disabled:opacity-50"
         >
           {loading ? "Signing in..." : "Sign In"}
         </button>
 
-        {/* Register link */}
+        {/* REGISTER */}
         <p className="text-center text-sm text-slate-500">
           Don't have an account?{" "}
           <Link

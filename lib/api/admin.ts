@@ -49,4 +49,37 @@ export const adminApi = {
     const response = await api.get<CoursesResponse>("/api/admin/courses");
     return response.data ?? [];
   },
+
+  getAllAssignments: async (): Promise<AdminAssignment[]> => {
+    const response = await api.get<AssignmentsResponse>("/api/admin/assignments");
+    return response.data ?? [];
+  },
 };
+
+export interface AdminAssignment {
+  id: string;
+  title: string;
+  description: string;
+  course: {
+    id: string;
+    name: string;
+  };
+  instructor: {
+    id: string;
+    name: string;
+  };
+  dueDate: string;
+  status: "draft" | "published";
+  maxGrade: number;
+  submissions: number;
+  createdAt: string;
+}
+
+export interface AssignmentsResponse {
+  data: AdminAssignment[];
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+  };
+}

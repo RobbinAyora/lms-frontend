@@ -3,29 +3,38 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { authApi, RegisterData } from "@/lib/api";
+import { api } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
+
+type Role = "STUDENT" | "ADMIN" | "INSTRUCTOR";
 
 export default function RegisterPage() {
   const router = useRouter();
 
-  const [formData, setFormData] = useState<RegisterData>({
+  const [formData, setFormData] = useState<{
+    email: string;
+    password: string;
+    role: Role;
+  }>({
     email: "",
     password: "",
-    role: "Student" as const,
+    role: "STUDENT",
   });
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const handleRoleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      role: e.target.value as RegisterData["role"],
+      role: e.target.value.toUpperCase() as Role, // 🔥 FORCE UPPERCASE
     });
   };
 
@@ -34,34 +43,30 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
 
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
-      setLoading(false);
-      return;
-    }
-
     try {
-      await authApi.register(formData);
+      await api.post("/api/auth/register", {
+        email: formData.email,
+        password: formData.password,
+        role: formData.role, // ✅ always uppercase
+      });
 
       router.push(
         `/auth/verify-otp?email=${encodeURIComponent(formData.email)}`
       );
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
+    } catch (err: any) {
+      console.log("Register error:", err);
 
-      setError(
-        error.response?.data?.message || "Registration failed"
-      );
+      const message =
+        err?.response?.data?.message || "Registration failed";
+
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout
-      title="Create Account"
-      subtitle="Join our learning platform"
-    >
+    <AuthLayout title="Create Account" subtitle="Join our platform">
       <form onSubmit={handleSubmit} className="space-y-5">
 
         {error && (
@@ -81,8 +86,7 @@ export default function RegisterPage() {
             value={formData.email}
             onChange={handleChange}
             required
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-black"
-            placeholder="you@example.com"
+            className="w-full px-4 py-3 border rounded-lg text-black"
           />
         </div>
 
@@ -98,8 +102,7 @@ export default function RegisterPage() {
             onChange={handleChange}
             required
             minLength={8}
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-black"
-            placeholder="Minimum 8 characters"
+            className="w-full px-4 py-3 border rounded-lg text-black"
           />
         </div>
 
@@ -110,21 +113,16 @@ export default function RegisterPage() {
           </label>
 
           <div className="flex gap-4">
-            {(["Student", "Instructor", "Admin"] as const).map((role) => (
-              <label
-                key={role}
-                className="flex items-center gap-2 cursor-pointer"
-              >
+            {(["STUDENT", "ADMIN", "INSTRUCTOR"] as Role[]).map((role) => (
+              <label key={role} className="flex items-center gap-2">
                 <input
                   type="radio"
                   name="role"
                   value={role}
                   checked={formData.role === role}
                   onChange={handleRoleChange}
-                  className="w-4 h-4 text-blue-500"
                 />
-
-                <span className="text-sm text-slate-600">
+                <span className="text-sm capitalize">
                   {role.toLowerCase()}
                 </span>
               </label>
@@ -136,15 +134,14 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition disabled:opacity-50"
+          className="w-full bg-blue-600 text-white py-3 rounded-lg"
         >
-          {loading ? "Creating Account..." : "Create Account"}
+          {loading ? "Creating..." : "Create Account"}
         </button>
 
-        {/* LOGIN LINK */}
-        <p className="text-center text-sm text-slate-500">
+        <p className="text-center text-sm">
           Already have an account?{" "}
-          <Link href="/auth/login" className="text-blue-600 hover:underline">
+          <Link href="/auth/login" className="text-blue-600">
             Sign in
           </Link>
         </p>

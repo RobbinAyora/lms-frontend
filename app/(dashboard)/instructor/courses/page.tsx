@@ -156,8 +156,6 @@ function CourseCardSkeleton() {
   );
 }
 
-export { CourseCard, CourseCardSkeleton };
-
 export default function InstructorCoursesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft" | "archived">("all");
@@ -177,11 +175,11 @@ export default function InstructorCoursesPage() {
         description: c.description || "",
         category: c.category || "Programming",
         status: c.status,
-        studentsCount: c.students,
-        lessonsCount: c.lessons,
+        studentsCount: Number(c.students) || 0,
+        lessonsCount: Number(c.lessons) || 0,
         duration: c.duration || "0h 0m",
-        price: c.price ?? 0,
-        rating: c.rating || 0,
+        price: Number(c.price) || 0,
+        rating: Number(c.rating) || 0,
         revenue: Number(c.revenue) || 0,
         updatedAt: c.createdAt || new Date().toISOString(),
         image: c.thumbnail || c.image || "",

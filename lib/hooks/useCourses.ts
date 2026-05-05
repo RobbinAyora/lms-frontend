@@ -8,6 +8,13 @@ export function useEnrolledCourses() {
   });
 }
 
+export function useInstructorCourses() {
+  return useQuery({
+    queryKey: ["instructor-courses"],
+    queryFn: courseApi.getInstructorCourses,
+  });
+}
+
 export function useAllCourses() {
   return useQuery({
     queryKey: ["all-courses"],
@@ -31,15 +38,23 @@ export function useCourseLessons(courseId: string) {
   });
 }
 
+export function useCourseProgress(courseId: string) {
+  return useQuery({
+    queryKey: ["course-progress", courseId],
+    queryFn: () => courseApi.getCourseProgress(courseId),
+    enabled: !!courseId,
+  });
+}
+
 export function useEnrollInCourse() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: courseApi.enrollInCourse,
     onSuccess: () => {
-      // Invalidate both enrolled and all courses to refresh UI
       queryClient.invalidateQueries({ queryKey: ["enrolled-courses"] });
       queryClient.invalidateQueries({ queryKey: ["all-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["instructor-courses"] });
     },
   });
 }
@@ -51,10 +66,34 @@ export function useMarkLessonComplete() {
     mutationFn: ({ courseId, lessonId }: { courseId: string; lessonId: string }) =>
       courseApi.markLessonComplete(courseId, lessonId),
     onSuccess: (_, variables) => {
-      // Invalidate course details and lessons to refresh progress
       queryClient.invalidateQueries({ queryKey: ["course", variables.courseId] });
       queryClient.invalidateQueries({ queryKey: ["course-lessons", variables.courseId] });
       queryClient.invalidateQueries({ queryKey: ["enrolled-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["course-progress", variables.courseId] });
+    },
+  });
+}
+
+export function useSaveWatchTime() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ lessonId, seconds }: { lessonId: string; seconds: number }) =>
+      courseApi.saveWatchTime(lessonId, seconds),
+    onSuccess: () => {
+      // Progress queries will be invalidated when needed
+    },
+  });
+}
+
+export function useCreateCourse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: courseApi.createCourse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["instructor-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["all-courses"] });
     },
   });
 }

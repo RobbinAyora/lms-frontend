@@ -1,309 +1,251 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { supportApi } from "@/lib/support";
 
-/* ================= CONFIG ================= */
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-/* ================= TYPES ================= */
-
-interface SupportTicket {
-  id: string;
-  subject: string;
-  status: "open" | "closed";
-  createdAt: string;
-  latestMessage?: string;
-  user?: {
-    name: string;
-    email: string;
-  };
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
-interface SupportMessage {
-  id: string;
-  message: string;
-  senderRole: "admin" | "user" | "student";
-  senderId: string;
-  createdAt: string;
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-/* ================= TOKEN ================= */
+const categoryConfig: any = {
+  TECHNICAL: { bg: "#EFF6FF", text: "#2563EB", label: "Technical" },
+  BILLING: { bg: "#F0FDF4", text: "#16A34A", label: "Billing" },
+  GENERAL: { bg: "#FFF7ED", text: "#EA580C", label: "General" },
+  COURSE: { bg: "#FDF4FF", text: "#9333EA", label: "Course" },
+};
 
-function getToken() {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem("token") || "";
-}
+const roleConfig: any = {
+  STUDENT: { bg: "#EFF6FF", text: "#2563EB" },
+  INSTRUCTOR: { bg: "#FFF7ED", text: "#EA580C" },
+  ADMIN: { bg: "#F0FDF4", text: "#16A34A" },
+};
 
-/* ================= PAGE ================= */
-
-export default function AdminSupportPage() {
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [selected, setSelected] = useState<SupportTicket | null>(null);
-
-  const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [message, setMessage] = useState("");
-
-  const [loadingTickets, setLoadingTickets] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(false);
+export default function AdminSupport() {
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [filter, setFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
   const [sending, setSending] = useState(false);
-  const [closing, setClosing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  /* ================= LOAD TICKETS ================= */
-
-  const loadTickets = async () => {
-    setLoadingTickets(true);
-
-    try {
-      const res = await fetch(`${API_URL}/api/support`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed: ${res.status} ${text}`);
-      }
-
-      const data = await res.json();
-      setTickets(data || []);
-    } catch (err) {
-      console.error("Error loading tickets:", err);
-    } finally {
-      setLoadingTickets(false);
-    }
-  };
-
-  /* ================= LOAD MESSAGES ================= */
-
-  const loadMessages = async (ticketId: string) => {
-    setLoadingMessages(true);
-
-    try {
-      const res = await fetch(
-        `${API_URL}/api/support/${ticketId}/messages`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        }
-      );
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed: ${res.status} ${text}`);
-      }
-
-      const data = await res.json();
-      setMessages(data || []);
-    } catch (err) {
-      console.error("Error loading messages:", err);
-    } finally {
-      setLoadingMessages(false);
-    }
-  };
-
-  /* ================= SEND MESSAGE ================= */
-
-  const sendMessage = async () => {
-    if (!selected || !message.trim()) return;
-
-    setSending(true);
-
-    try {
-      const res = await fetch(
-        `${API_URL}/api/support/${selected.id}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
-          body: JSON.stringify({ message }),
-        }
-      );
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed: ${res.status} ${text}`);
-      }
-
-      const data = await res.json();
-
-      setMessages((prev) => [...prev, data]);
-      setMessage("");
-    } catch (err) {
-      console.error("Send message error:", err);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  /* ================= CLOSE TICKET ================= */
-
-  const closeTicket = async () => {
-    if (!selected) return;
-
-    setClosing(true);
-
-    try {
-      const res = await fetch(
-        `${API_URL}/api/support/${selected.id}/close`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        }
-      );
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed: ${res.status} ${text}`);
-      }
-
-      const updated = { ...selected, status: "closed" as const };
-
-      setSelected(updated);
-      setTickets((prev) =>
-        prev.map((t) => (t.id === updated.id ? updated : t))
-      );
-    } catch (err) {
-      console.error("Close ticket error:", err);
-    } finally {
-      setClosing(false);
-    }
-  };
-
-  /* ================= EFFECTS ================= */
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadTickets();
   }, []);
 
-  useEffect(() => {
-    if (selected) loadMessages(selected.id);
-  }, [selected]);
+  const loadTickets = async () => {
+    try {
+      setLoading(true);
+      const data = await supportApi.getAllTickets();
+      setTickets(data || []);
+
+      if (data?.length) {
+        selectTicket(data[0]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* ================= UI ================= */
+  const selectTicket = async (ticket: any) => {
+    setSelectedTicket(ticket);
+    try {
+      const msgs = await supportApi.getMessages(ticket.id);
+      setMessages(msgs || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedTicket) return;
+
+    setSending(true);
+    try {
+      const msg = await supportApi.sendMessage(
+        selectedTicket.id,
+        newMessage
+      );
+
+      setMessages((prev) => [...prev, msg]);
+      setNewMessage("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const closeTicket = async (ticketId: string) => {
+    try {
+      await supportApi.closeTicket(ticketId);
+
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId ? { ...t, status: "CLOSED" } : t
+        )
+      );
+
+      if (selectedTicket?.id === ticketId) {
+        setSelectedTicket((t: any) => ({ ...t, status: "CLOSED" }));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const filteredTickets = tickets.filter((t) => {
+    const matchFilter = filter === "ALL" || t.status === filter;
+
+    const matchSearch =
+      !search ||
+      t.subject?.toLowerCase().includes(search.toLowerCase());
+
+    return matchFilter && matchSearch;
+  });
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div style={{ display: "flex", height: "100vh", background: "#F8FAFF" }}>
 
-      {/* LEFT SIDEBAR */}
-      <aside className="w-80 bg-white border-r flex flex-col">
-
-        <div className="p-4 border-b">
-          <h1 className="font-bold text-lg">Support Tickets</h1>
+      {/* SIDEBAR */}
+      <div style={{ width: 340, background: "#fff", borderRight: "1px solid #E2E8F0" }}>
+        <div style={{ padding: 16 }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search tickets..."
+            style={{ width: "100%", padding: 10, border: "1px solid #E2E8F0", borderRadius: 8 }}
+          />
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {loadingTickets ? (
-            <p className="p-4">Loading...</p>
-          ) : (
-            tickets.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setSelected(t)}
-                className={`w-full text-left p-4 border-b hover:bg-gray-100 ${
-                  selected?.id === t.id ? "bg-gray-200" : ""
-                }`}
-              >
-                <p className="font-semibold">{t.subject}</p>
-                <p className="text-xs text-gray-500">{t.user?.name}</p>
-                <p className="text-xs text-gray-400">{t.status}</p>
-              </button>
-            ))
-          )}
-        </div>
-      </aside>
+        {filteredTickets.map((ticket) => {
+          const userInitial = (ticket.user?.name?.[0] || "U").toUpperCase();
+          const userName = ticket.user?.name || "Unknown User";
+
+          return (
+            <div
+              key={ticket.id}
+              onClick={() => selectTicket(ticket)}
+              style={{
+                padding: 12,
+                cursor: "pointer",
+                borderBottom: "1px solid #F1F5F9",
+                background: selectedTicket?.id === ticket.id ? "#EFF6FF" : "#fff",
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>
+                {ticket.subject}
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                
+                {/* SAFE USER ICON */}
+                <div
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    background: "#2563EB",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  {userInitial}
+                </div>
+
+                <span style={{ fontSize: 12, color: "#64748B" }}>
+                  {userName}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* CHAT AREA */}
-      <main className="flex-1 flex flex-col">
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
-        {!selected ? (
-          <div className="flex-1 flex items-center justify-center">
-            Select a ticket
+        {/* MESSAGES */}
+        <div style={{ flex: 1, padding: 20, overflowY: "auto" }}>
+          {messages.map((msg) => (
+            <div key={msg.id} style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: "#64748B" }}>
+                {msg.senderRole}
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 10,
+                  background: "#fff",
+                  border: "1px solid #E2E8F0",
+                  display: "inline-block",
+                }}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* INPUT */}
+        <div style={{ padding: 16, borderTop: "1px solid #E2E8F0", background: "#fff" }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            <input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type message..."
+              style={{
+                flex: 1,
+                padding: 10,
+                border: "1px solid #E2E8F0",
+                borderRadius: 8,
+              }}
+            />
+
+            <button
+              onClick={sendMessage}
+              style={{
+                padding: "10px 16px",
+                background: "#2563EB",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+              }}
+            >
+              Send
+            </button>
           </div>
-        ) : (
-          <>
-            {/* HEADER */}
-            <div className="p-4 bg-white border-b flex justify-between">
-              <div>
-                <h2 className="font-bold">{selected.subject}</h2>
-                <p className="text-xs text-gray-500">
-                  {selected.user?.name}
-                </p>
-              </div>
-
-              {selected.status === "open" && (
-                <button
-                  onClick={closeTicket}
-                  className="bg-red-500 text-white px-3 py-1 rounded"
-                >
-                  {closing ? "Closing..." : "Close"}
-                </button>
-              )}
-            </div>
-
-            {/* MESSAGES */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {loadingMessages ? (
-                <p>Loading messages...</p>
-              ) : (
-                messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`flex ${
-                      m.senderRole === "admin"
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`px-3 py-2 rounded max-w-xs ${
-                        m.senderRole === "admin"
-                          ? "bg-blue-600 text-white"
-                          : "bg-white border"
-                      }`}
-                    >
-                      {m.message}
-                    </div>
-                  </div>
-                ))
-              )}
-
-              <div ref={bottomRef} />
-            </div>
-
-            {/* INPUT */}
-            {selected.status === "open" && (
-              <div className="p-4 border-t flex gap-2 bg-white">
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="flex-1 border p-2 rounded"
-                />
-
-                <button
-                  onClick={sendMessage}
-                  disabled={sending}
-                  className="bg-blue-600 text-white px-4 rounded"
-                >
-                  Send
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </main>
+        </div>
+      </div>
     </div>
   );
 }

@@ -19,19 +19,19 @@ export function StatCard({ title, value, change, changeType = "neutral", icon }:
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-all duration-200">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{title}</p>
+          <p className="text-2xl font-semibold text-gray-900 mt-2">{value}</p>
           {change && (
-            <p className={`text-sm mt-2 ${changeClasses[changeType]}`}>
+            <p className={`text-xs mt-2 font-medium ${changeClasses[changeType]}`}>
               {change}
             </p>
           )}
         </div>
         {icon && (
-          <div className="p-3 bg-blue-50 rounded-lg">
+          <div className="p-2.5 bg-gray-50 rounded-xl">
             {icon}
           </div>
         )}

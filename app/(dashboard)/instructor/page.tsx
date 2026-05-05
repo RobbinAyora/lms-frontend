@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { DashboardLayout, StatCard } from "@/components/dashboard";
 import { Card, CardHeader, CardTitle, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Button, Modal, Form, Input, Textarea, Select } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
-import { useInstructorCourses, usePendingSubmissions, useRecentSubmissions } from "@/lib/hooks/useInstructor";
+import { useInstructorCourses, usePendingSubmissions, useRecentSubmissions, useCreateAssignment } from "@/lib/hooks/useInstructor";
 
 const instructorNavItems = [
   {
@@ -27,7 +27,7 @@ const instructorNavItems = [
   },
   {
     label: "Course Builder",
-    href: "/instructor/builder",
+    href: "/instructor/course-builder",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -89,13 +89,17 @@ export default function InstructorDashboard() {
   };
 
   const { data: instructorCourses = [], isLoading: coursesLoading } = useInstructorCourses();
-  const { data: pendingSubmissions = [], isLoading: submissionsLoading } = usePendingSubmissions();
-  const { data: recentSubmissions = [] } = useRecentSubmissions();
+  const { data: pendingSubmissions = [], isLoading: submissionsLoading, error: submissionsError } = usePendingSubmissions();
+  const { data: recentSubmissions = [], error: recentSubmissionsError } = useRecentSubmissions();
+  const createAssignmentMutation = useCreateAssignment();
 
-  const totalStudents = instructorCourses.reduce((acc, c) => acc + c.students, 0);
+  const totalStudents = instructorCourses.reduce((acc, c) => acc + (c.students || 0), 0);
   const avgRating = instructorCourses.length > 0
     ? Math.round(instructorCourses.reduce((acc, c) => acc + (c.rating || 0), 0) / instructorCourses.length * 10) / 10
     : 0;
+
+  // Safety check for NaN
+  const safeAvgRating = isNaN(avgRating) ? 0 : avgRating;
 
   const filteredCourses = instructorCourses.filter(course =>
     course.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -163,7 +167,7 @@ export default function InstructorDashboard() {
           />
           <StatCard
             title="Average Rating"
-            value={coursesLoading ? "..." : `${avgRating}`}
+            value={coursesLoading ? "..." : `${safeAvgRating}`}
             change="+0.2 this month"
             changeType="positive"
             icon={
@@ -173,6 +177,13 @@ export default function InstructorDashboard() {
             }
           />
         </div>
+
+        {/* Show error message if submissions failed to load */}
+        {(submissionsError || recentSubmissionsError) && (
+          <div className="p-4 text-sm text-yellow-600 bg-yellow-50 rounded-lg">
+            Note: Submissions data is currently unavailable. Please contact support to enable this feature.
+          </div>
+        )}
 
         <div className="flex justify-end">
           <Button onClick={() => setShowAssignmentModal(true)}>
@@ -318,11 +329,33 @@ export default function InstructorDashboard() {
             <Button variant="outline" onClick={() => setShowAssignmentModal(false)}>
               Cancel
             </Button>
-            <Button onClick={() => {
-              console.log("Creating assignment:", assignmentForm);
-              setShowAssignmentModal(false);
-            }}>
-              Create Assignment
+            <Button
+              onClick={async () => {
+                if (!assignmentForm.course) {
+                  showToast("Please select a course", "error");
+                  return;
+                }
+                try {
+                  await createAssignmentMutation.mutateAsync({
+                    courseId: assignmentForm.course,
+                    data: {
+                      title: assignmentForm.title,
+                      description: assignmentForm.description,
+                      dueDate: assignmentForm.dueDate,
+                      maxGrade: assignmentForm.points,
+                      status: "draft",
+                    },
+                  });
+                  setShowAssignmentModal(false);
+                  showToast("Assignment created successfully!", "success");
+                  setAssignmentForm({ title: "", course: "", description: "", dueDate: "", points: 100 });
+                } catch (error: any) {
+                  showToast(error.message || "Failed to create assignment", "error");
+                }
+              }}
+              disabled={createAssignmentMutation.isPending}
+            >
+              {createAssignmentMutation.isPending ? "Creating..." : "Create Assignment"}
             </Button>
           </div>
         </Form>

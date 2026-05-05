@@ -5,3 +5,4 @@ export * from "./assignments";
 export * from "./instructor";
 export * from "./admin";
 export * from "./support";
+export * from "./support";
