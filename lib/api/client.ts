@@ -51,6 +51,16 @@ export async function apiClient<T>(
   try {
     console.log("🚀 API REQUEST START");
 
+    // 🔵 DEBUG: Log request body being sent
+    console.log("🟡 REQUEST BODY:", fetchOptions.body);
+    if (fetchOptions.body && typeof fetchOptions.body === "string") {
+      try {
+        console.log("🟡 REQUEST BODY (parsed):", JSON.parse(fetchOptions.body));
+      } catch {
+        console.log("🟡 REQUEST BODY (raw string):", fetchOptions.body);
+      }
+    }
+
     response = await fetch(`${baseUrl}${url}`, {
       ...fetchOptions,
       headers,

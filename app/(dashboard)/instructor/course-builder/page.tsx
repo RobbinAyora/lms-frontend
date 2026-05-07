@@ -193,8 +193,19 @@ export default function CourseBuilderPage() {
   const allVideosUploaded = allVideoLessons.every((l) => l.videoFile);
   const canPublish = isFormValid && allVideosUploaded;
 
-  const createCourseMutation = useMutation({
-    mutationFn: async (_courseData: CourseData) => {
+      const createCourseMutation = useMutation({
+        mutationFn: async (_courseData: CourseData) => {
+          console.log("🔥 MUTATION FIRED");
+          console.log("📦 Modules state:", JSON.stringify(modules.map(m => ({
+            id: m.id,
+            title: m.title,
+            lessons: m.lessons.map(l => ({
+              title: l.title,
+              type: l.type,
+              hasFile: !!l.videoFile,
+              localId: l._localId
+            }))
+          }))));
       const payload = {
         title: courseData.title,
         description: courseData.description,
@@ -215,25 +226,18 @@ export default function CourseBuilderPage() {
       const courseId = courseResponse.id;
 
       const lessonPromises = modules.map(async (module, moduleIndex) => {
-        return Promise.all(
-          module.lessons.map(async (lesson, lessonIndex) => {
-            const order = moduleIndex * 100 + lessonIndex;
-             if (lesson.type === "video" && lesson.videoFile) {
-                const formData = new FormData();
-                formData.append("file", lesson.videoFile);
-               formData.append("title", lesson.title);
-               formData.append("type", "video");
-               formData.append("duration", lesson.duration);
-               formData.append("courseId", courseId);
-               formData.append("order", order.toString());
-               console.log("Uploading lesson file:", lesson.videoFile);
-               console.log("FormData keys:", Array.from(formData.keys()));
-               console.log("File name:", lesson.videoFile.name);
-               console.log("File size:", lesson.videoFile.size);
-               console.log("Endpoint URL: /api/lessons");
-               console.log("Request payload type: multipart/form-data (FormData)");
-               await instructorApi.uploadLessonWithFile(formData);
-             }
+              return Promise.all(
+                module.lessons.map(async (lesson, lessonIndex) => {
+                  const order = moduleIndex * 100 + lessonIndex;
+                  console.log("Lesson videoFile:", lesson.videoFile, "type:", lesson.type);
+                  if (lesson.type === "video" && lesson.videoFile) {
+  const formData = new FormData();
+  formData.append("video", lesson.videoFile);
+  formData.append("title", lesson.title);
+  formData.append("description", lesson.title);
+  formData.append("courseId", courseId);
+  await instructorApi.uploadLessonWithFile(formData);
+}
           })
         );
       });
